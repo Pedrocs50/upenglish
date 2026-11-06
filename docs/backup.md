@@ -42,14 +42,17 @@ Essas chaves dão acesso total aos dados. Nunca as coloque neste repositório ne
 
 ## Testar a restauração
 
-Um botão restaura a cópia mais recente em um projeto de teste e compara tudo: quantidade de linhas das tabelas, regras de acesso e cada arquivo, byte a byte. O projeto real não é tocado: o teste se recusa a rodar se os segredos apontarem para ele, ou se o projeto de teste já tiver dados.
+Em **Actions → Testar restauração → Run workflow**, o GitHub cria um projeto temporário no Supabase, restaura a cópia mais recente nele, compara tudo (linhas das tabelas, regras de acesso e cada arquivo, byte a byte) e apaga o projeto, mesmo se algo falhar no meio. O registro mostra `RESTAURAÇÃO OK` e as contagens. Vale repetir de vez em quando, por exemplo a cada 6 meses.
 
-1. Crie um projeto **novo e vazio** no Supabase (o Free permite 2 ativos).
-2. No repositório privado, cadastre os segredos `TESTE_SUPABASE_DB_URL` (Connect → Direct → Session pooler), `TESTE_SUPABASE_URL` e `TESTE_SUPABASE_SERVICE_KEY`, todos **do projeto de teste**.
-3. Em **Actions → Testar restauração → Run workflow**, rode o teste. O registro termina com `RESTAURAÇÃO OK` e as contagens. Se algo der errado, ele pode mostrar trechos de dados dos alunos, e por isso só pode rodar no repositório privado.
-4. **Apague o projeto de teste** e os três segredos: ele guarda dados reais dos alunos.
+O projeto real não é tocado: o teste recusa o endereço dele, recusa projeto que já tenha dados e só apaga um projeto criado por ele, com nome `teste-restauracao-...`.
 
-Para testar de novo, crie outro projeto vazio. Vale repetir de vez em quando, por exemplo a cada 6 meses.
+**Precisa de:**
+- Uma vaga livre no plano Free (2 projetos ativos).
+- O segredo `SUPABASE_ACCESS_TOKEN` no repositório privado: um token de [Access Tokens](https://supabase.com/dashboard/account/tokens) com acesso à organização e estas permissões: Organization Projects e Project Settings (Read-write); API Keys, API Key Secrets e Connection Pooling (Read).
+
+Esse token pode apagar projetos, inclusive o real. Use validade curta e apague o token depois do teste.
+
+**Se a etapa "Apagar o projeto de teste" falhar,** apague à mão no Supabase o projeto `teste-restauracao-...`: ele guarda dados reais dos alunos. Se o teste falhar, o registro pode mostrar trechos desses dados, e por isso ele só pode rodar no repositório privado.
 
 ## Como restaurar
 

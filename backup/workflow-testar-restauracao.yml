@@ -1,5 +1,5 @@
 # Copie para .github/workflows/testar-restauracao.yml no repositório PRIVADO das cópias (veja docs/backup.md).
-# Só roda quando alguém clica em "Run workflow".
+# Só roda quando alguém clica em "Run workflow". Cria um projeto temporário, restaura a última cópia nele, compara e apaga.
 name: Testar restauração
 
 on:
@@ -12,6 +12,9 @@ jobs:
   testar:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      ORGANIZACAO: rjerzzxrguucrcpdfofm
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,10 +36,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Criar o projeto de teste
+        run: node upenglish/backup/projeto-de-teste.mjs criar
+
       - name: Restaurar e comparar
         run: bash upenglish/backup/testar-restauracao.sh copia/banco-*.gpg copia/arquivos-*.gpg
         env:
-          TESTE_SUPABASE_DB_URL: ${{ secrets.TESTE_SUPABASE_DB_URL }}
-          TESTE_SUPABASE_URL: ${{ secrets.TESTE_SUPABASE_URL }}
-          TESTE_SUPABASE_SERVICE_KEY: ${{ secrets.TESTE_SUPABASE_SERVICE_KEY }}
           SENHA_BACKUP: ${{ secrets.SENHA_BACKUP }}
+
+      # Roda mesmo se o teste falhar: o projeto guarda dados reais dos alunos.
+      - name: Apagar o projeto de teste
+        if: always() && env.PROJETO_TESTE_REF != ''
+        run: node upenglish/backup/projeto-de-teste.mjs apagar

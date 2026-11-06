@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prova que uma cópia pode ser recuperada: restaura num projeto de teste VAZIO e compara com o que estava na cópia.
-# Recusa o projeto real e qualquer projeto que já tenha dados. Veja docs/backup.md.
+# Recusa o projeto real e qualquer projeto que já tenha dados. Quem cria o projeto de teste é o projeto-de-teste.mjs. Veja docs/backup.md.
 #
 # Uso: testar-restauracao.sh <banco-DATA.tar.gz.gpg> <arquivos-DATA.tar.gz.gpg>
 # Precisa de TESTE_SUPABASE_DB_URL, TESTE_SUPABASE_URL, TESTE_SUPABASE_SERVICE_KEY e SENHA_BACKUP, de psql, gpg e node.
@@ -35,6 +35,12 @@ abrir() { # arquivo, pasta
 case "$TESTE_SUPABASE_DB_URL $TESTE_SUPABASE_URL" in
   *"$PROJETO_REAL"*) falhar "Os segredos TESTE_* apontam para o projeto REAL. Nada foi feito." ;;
 esac
+# Um projeto recém-criado demora um pouco para aceitar conexões.
+for tentativa in $(seq 1 20); do
+  if consulta 'select 1' >/dev/null 2>&1; then break; fi
+  [ "$tentativa" -lt 20 ] || falhar "O projeto de teste não aceitou a conexão."
+  sleep "${ESPERA_CONEXAO:-15}"
+done
 [ -z "$(consulta "select to_regclass('public.perfis')")" ] || falhar "O projeto de teste não está vazio. Crie outro projeto; nada foi feito."
 
 echo "Abrindo a cópia..."
@@ -86,11 +92,9 @@ diff -r --exclude=arquivos.json --exclude=falhas.txt "$TEMP/arquivos" "$TEMP/con
 QTD="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).length)' "$TEMP/conferencia/arquivos.json")"
 if [ -f "$TEMP/arquivos/falhas.txt" ]; then echo "ATENÇÃO: esta cópia já estava incompleta:"; cat "$TEMP/arquivos/falhas.txt"; fi
 
-echo
 echo "RESTAURAÇÃO OK"
 echo "- Tabelas iguais à cópia: $TABELAS"
 echo "- Contas de login: $CONTAS"
 echo "- Perfis: $PERFIS"
 echo "- Arquivos iguais à cópia: $QTD"
 echo
-echo "Agora apague o projeto de teste no Supabase: ele guarda dados reais dos alunos."
