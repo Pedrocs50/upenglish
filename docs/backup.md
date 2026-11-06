@@ -38,7 +38,18 @@ Essas chaves dão acesso total aos dados. Nunca as coloque neste repositório ne
 
 **5. Rode a primeira cópia.** **Actions → Cópia de segurança → Run workflow**. Ao terminar, a cópia aparece em **Releases**, com o resumo de contas, perfis e arquivos. Confira se os números fazem sentido.
 
-**6. Faça um teste de restauração** (seção abaixo), num projeto novo do Supabase. Só depois disso dá para confiar nas cópias.
+**6. Faça um teste de restauração** (seção abaixo). Só depois disso dá para confiar nas cópias.
+
+## Testar a restauração
+
+Um botão restaura a cópia mais recente em um projeto de teste e compara tudo: quantidade de linhas das tabelas, regras de acesso e cada arquivo, byte a byte. O projeto real não é tocado: o teste se recusa a rodar se os segredos apontarem para ele, ou se o projeto de teste já tiver dados.
+
+1. Crie um projeto **novo e vazio** no Supabase (o Free permite 2 ativos).
+2. No repositório privado, cadastre os segredos `TESTE_SUPABASE_DB_URL` (Connect → Direct → Session pooler), `TESTE_SUPABASE_URL` e `TESTE_SUPABASE_SERVICE_KEY`, todos **do projeto de teste**.
+3. Em **Actions → Testar restauração → Run workflow**, rode o teste. O registro termina com `RESTAURAÇÃO OK` e as contagens. Se algo der errado, ele pode mostrar trechos de dados dos alunos, e por isso só pode rodar no repositório privado.
+4. **Apague o projeto de teste** e os três segredos: ele guarda dados reais dos alunos.
+
+Para testar de novo, crie outro projeto vazio. Vale repetir de vez em quando, por exemplo a cada 6 meses.
 
 ## Como restaurar
 
