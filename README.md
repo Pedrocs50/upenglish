@@ -4,7 +4,7 @@ Plataforma da escola **UP English** (Teacher Monique Barros) para dar aulas e ex
 
 **No ar:** https://upenglish.pages.dev
 
-> O repositório se chama `eegen` porque o projeto começou como um gerador de exercícios de listening. Esse gerador continua aqui (veja o fim deste arquivo), mas hoje é só uma parte pequena.
+> O projeto começou como um gerador de exercícios de listening. Esse gerador continua aqui (veja o fim deste arquivo), mas hoje é só uma parte pequena.
 
 ## O que a plataforma faz
 

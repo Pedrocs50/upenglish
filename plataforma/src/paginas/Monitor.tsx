@@ -116,7 +116,7 @@ function Verificacoes({ aoEnviarTeste }: { aoEnviarTeste: () => void }) {
       <div className="mt-4 space-y-3 border-t border-borda pt-4 text-sm text-suave">
         <p>
           <strong className="font-semibold text-texto">Testes automáticos:</strong> as regras do banco e as funções de IA são testadas a cada publicação, fora do site (eles precisam de um banco de teste).{" "}
-          <a href="https://github.com/Pedrocs50/eegen/actions" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-destaque underline">Ver no GitHub Actions <ExternalLink className="size-3.5" /></a>
+          <a href="https://github.com/Pedrocs50/upenglish/actions" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-destaque underline">Ver no GitHub Actions <ExternalLink className="size-3.5" /></a>
         </p>
         <p><strong className="font-semibold text-texto">Versão publicada:</strong> <code>{VERSAO_DO_SITE}</code>. Cada erro abaixo mostra em qual versão aconteceu.</p>
       </div>

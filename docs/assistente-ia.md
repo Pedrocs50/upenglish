@@ -72,8 +72,8 @@ A chave fica só no Supabase. Ela nunca vai para o site nem para o GitHub.
 As funções `assistente` e `audio` são testadas e publicadas sozinhas a cada push na `main` que mexa em `supabase/functions/` (workflow `.github/workflows/funcoes.yml`). Não é mais preciso colar o código no painel. A publicação já sai com o "Verify JWT with legacy secret" desligado, como estava no painel: a própria função confere o login.
 
 Configuração, uma vez:
-1. No Supabase: avatar (canto superior direito) → **Account preferences → Access Tokens → Generate new token**. Dê um nome (ex.: "GitHub eegen") e copie o token.
-2. No GitHub: repositório **eegen → Settings → Secrets and variables → Actions → New repository secret**. Name: `SUPABASE_ACCESS_TOKEN`; Value: o token.
+1. No Supabase: avatar (canto superior direito) → **Account preferences → Access Tokens → Generate new token**. Dê um nome (ex.: "GitHub upenglish") e copie o token.
+2. No GitHub: repositório **upenglish → Settings → Secrets and variables → Actions → New repository secret**. Name: `SUPABASE_ACCESS_TOKEN`; Value: o token.
 3. Em **Actions → Funções do Supabase → Run workflow**, publique pela primeira vez (ou faça um push que mexa nas funções).
 
 Pelo terminal também funciona:

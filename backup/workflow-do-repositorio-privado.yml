@@ -20,8 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: Pedrocs50/eegen
-          path: eegen
+          repository: Pedrocs50/upenglish
+          path: upenglish
 
       - uses: supabase/setup-cli@v1
         with:
@@ -32,10 +32,10 @@ jobs:
           node-version: 22
 
       - name: Instalar o que o script usa
-        run: npm install --prefix eegen/backup --no-audit --no-fund
+        run: npm install --prefix upenglish/backup --no-audit --no-fund
 
       - name: Fazer a cópia
-        run: bash eegen/backup/fazer-backup.sh saida
+        run: bash upenglish/backup/fazer-backup.sh saida
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -58,7 +58,7 @@ jobs:
           fi
 
       - name: Apagar as cópias antigas
-        run: bash eegen/backup/limpar-antigas.sh "$COPIAS_MANTIDAS"
+        run: bash upenglish/backup/limpar-antigas.sh "$COPIAS_MANTIDAS"
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
