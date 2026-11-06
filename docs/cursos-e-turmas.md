@@ -2,8 +2,8 @@
 
 **Status (19/10/2026):** ativo. É a espinha da plataforma: o aluno só vê o que foi liberado para a turma dele.
 
-## Exercícios do curso (migração `0018`)
-Os exercícios ficam **no curso**, numa lista própria e em ordem, separados das aulas. Cada turma libera os que quiser, no ritmo dela.
+## Exercícios do curso (migrações `0018` e `0019`)
+Os exercícios ficam **no curso**, numa lista própria e em ordem, separados das aulas. Ao entrar no curso, o exercício **já fica liberado em todas as turmas dele**, sem etapa de aprovação. Cada turma ainda pode recolher o que quiser segurar.
 
 - **No curso** (`/cursos/:id`, seção "Exercícios do curso"):
   - "Adicionar vários exercícios de uma vez": marca o nível (ex.: Elementary) e entram todos de uma vez;
@@ -12,11 +12,14 @@ Os exercícios ficam **no curso**, numa lista própria e em ordem, separados das
   - depois dá para subir, descer, tirar do curso ou usar "Organizar na ordem das aulas";
   - "Criar exercício novo neste curso" abre o editor em `/exercicios/nova?curso=ID`, e a lista entra no curso no primeiro salvamento.
 - **Na turma** (`/turmas/:id`, aba **Exercícios**):
-  - "Liberar" um a um ou "Liberar todos";
+  - tudo que entra no curso aparece já liberado, e turma nova nasce com os exercícios do curso;
+  - "Recolher" esconde da turma; o recolhido só volta com "Liberar" (um a um ou "Liberar todos");
   - o aluno recebe um aviso só por comando ("5 exercícios novos");
   - "Copiar aviso para o grupo" traz os links.
 - **Para o aluno:** em Exercícios, o filtro "Do curso" aparece ao lado de "Das aulas" e "Extras". O "Próximo exercício" passa pelos do curso depois das aulas.
-- **Regra:** o aluno vê o exercício se ele estiver publicado, no curso da turma e liberado na turma. Tirar do curso esconde de novo, mesmo já liberado.
+- **Regra:** o aluno vê o exercício se ele estiver publicado, no curso da turma e não recolhido na turma. Tirar do curso esconde de novo.
+- **Rascunhos:** podem entrar no curso, mas ficam escondidos até serem publicados, porque podem estar incompletos. Ao publicar, o exercício aparece e o aluno recebe o aviso.
+- **Exercícios que já estavam no curso antes da `0019`:** continuam como estavam. Eles podem ter sido segurados de propósito; para abrir, use "Liberar todos" na turma.
 - **Diferença dos extras:** o extra é escolhido turma por turma. O exercício do curso é montado uma vez e serve a todas as turmas do curso.
 
 ## Colocar PDFs e aulas mais rápido
@@ -76,7 +79,7 @@ Um curso pode servir a várias turmas, e cada turma libera as aulas no próprio 
 
 ## Quem vê o quê
 - **Aluno sem turma ou com o pedido pendente:** não vê nenhum exercício, só "Entre na sua turma" ou "Pedido enviado".
-- **Aluno aprovado:** vê as aulas liberadas para a turma dele, com o material e os exercícios publicados de cada uma, mais os extras publicados da turma.
+- **Aluno aprovado:** vê as aulas liberadas para a turma dele, com o material e os exercícios publicados de cada uma, os exercícios publicados do curso (menos os recolhidos na turma) e os extras publicados da turma.
 - **Lista publicada fora de qualquer aula e de qualquer turma:** ninguém de fora da equipe vê. A página Exercícios mostra "Fora das turmas" nesses casos.
 - **Equipe:** vê tudo. Em "Visão do aluno" (`/aluno`), escolhe uma turma e vê exatamente o que os alunos dela veem.
 
@@ -92,7 +95,7 @@ Quem já tem conta abre o mesmo link (ou digita o código em Minha turma) e o pe
 | Rota | Quem | O que faz |
 |---|---|---|
 | `/turmas` | professor, admin | Turmas com alunos, aulas liberadas e selo de pedidos |
-| `/turmas/:id` | professor, admin | Abas Aulas (liberar e "Nova aula"), Exercícios (liberar os do curso), Extras (listas avulsas, salva sozinho) e Alunos (pedidos, alunos e convite). Atalhos para Resultados e "Ver como aluno" |
+| `/turmas/:id` | professor, admin | Abas Aulas (liberar e "Nova aula"), Exercícios (os do curso, já liberados; recolher ou liberar de novo), Extras (listas avulsas, salva sozinho) e Alunos (pedidos, alunos e convite). Atalhos para Resultados e "Ver como aluno" |
 | `/cursos`, `/cursos/:id` | professor, admin | Biblioteca: cursos e aulas, com PDF ou link e os exercícios de cada aula, e os exercícios do curso. Mostra as turmas que seguem o curso |
 | `/aluno` | aluno (e a equipe, como visão do aluno) | **Minhas turmas**: um bloco por turma, com curso, progresso, a próxima aula ao vivo e os selos "Aula nova" e "extras novos". Pedidos pendentes aparecem como blocos à parte. Embaixo, entrar em outra turma |
 | `/aluno/turmas/:id` | aluno (e equipe) | Página da turma: topo com o progresso e "Entrar na aula", e as abas **Início** (aula ao vivo, próximo exercício, atalhos, aula mais recente), **Aulas**, **Exercícios** ("Das aulas", agrupados por aula, "Do curso" e "Extras", com filtro e busca) e **Ao vivo** |
@@ -163,7 +166,9 @@ Migração `0013`. Cada turma pode ter:
 - os **horários semanais**, no horário de Brasília;
 - um **aviso do dia** opcional, com a data até quando fica visível.
 
-**Professora:** aba **Ao vivo** da turma. Tem o passo a passo para criar um link fixo no Google Agenda, o botão "testar o link" e "Copiar link e horários para o grupo".
+**Professora:** aba **Ao vivo** da turma. Tem o atalho "Criar reunião no Google Meet", o passo a passo para criar um link fixo no Google Agenda, o botão "testar o link" e "Copiar link e horários para o grupo". O campo aceita o link sem `https://` ou no meio do convite inteiro do Meet.
+
+**A reunião é criada na conta Google da própria professora:** a plataforma guarda só o link, sem pedir acesso à conta dela.
 
 **Aluno:** cartão "Aula ao vivo" no Início e na aba Ao vivo da turma, e o botão compacto no topo da turma:
 - **verde**, "Acontecendo agora", durante a aula;
@@ -174,7 +179,9 @@ O cálculo usa o horário de Brasília (`plataforma/src/lib/aoVivo.ts`), então 
 
 **Segurança:** o link fica numa tabela própria (`turma_encontros`) e só os alunos **aprovados** leem. Quem está com o pedido pendente vê o nome da turma, mas não o link.
 
-**Depois, com e-mail próprio:** lembrete por e-mail antes da aula e, se fizer sentido, gerar o Meet automaticamente pela API do Google Agenda.
+**Depois, com e-mail próprio:** lembrete por e-mail antes da aula e, se fizer sentido, gerar o Meet automaticamente pela API do Google Agenda. Isso exige pedir ao Google a permissão de agenda no login e passar pela verificação do app.
+
+**Cuidado no código:** esta tabela só permite alterar as colunas de conteúdo, então `upsert` não funciona nela. O PostgREST regrava também a chave (`turma_id`) e o banco recusa. Use `salvarEncontros` (`plataforma/src/lib/aoVivo.ts`).
 
 ## Notificações
 Migração `0012`. São criadas por gatilhos no banco, então não dependem de ninguém estar com o site aberto. Ficam no sininho do menu, com o número de não lidas, e na página `/notificacoes`. O menu também mostra quantos pedidos de entrada estão pendentes em **Turmas**.

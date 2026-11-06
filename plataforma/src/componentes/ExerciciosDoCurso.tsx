@@ -87,7 +87,7 @@ export default function ExerciciosDoCurso({ curso, aulas }: { curso: { id: strin
     const inicio = ids.length;
     const { error } = await supabase.from("curso_listas").insert(ordenarPelasAulas(novas, aulas).map((l, i) => ({ curso_id: curso.id, lista_id: l.id, ordem: inicio + i })));
     if (error) return setErro(traduzirErro(error.message));
-    avisar(`${novas.length} ${novas.length === 1 ? "exercício entrou" : "exercícios entraram"} no curso. Libere nas turmas, na aba Exercícios de cada uma.`);
+    avisar(`${novas.length} ${novas.length === 1 ? "exercício entrou" : "exercícios entraram"} no curso e os alunos das turmas já podem fazer${novas.some((l) => l.status === "rascunho") ? " (os rascunhos, depois de publicados)" : ""}.`);
     await recarregar();
   }
 
@@ -101,7 +101,7 @@ export default function ExerciciosDoCurso({ curso, aulas }: { curso: { id: strin
     <section aria-labelledby="exercicios-do-curso">
       <div className="mb-4">
         <h2 id="exercicios-do-curso" className="text-2xl font-bold text-marca">Exercícios do curso</h2>
-        <p className="text-sm text-suave">Ficam no curso, separados das aulas. Cada turma libera os que quiser, na aba <strong>Exercícios</strong> da turma.</p>
+        <p className="text-sm text-suave">Ficam no curso, separados das aulas, e aparecem na hora para os alunos de todas as turmas dele. Para segurar algum numa turma, recolha na aba <strong>Exercícios</strong> da turma.</p>
       </div>
 
       <AdicionarVarios curso={curso} listas={dados.listas} jaNoCurso={new Set(ids)} aulas={aulas} aberto={ids.length === 0} aoAdicionar={adicionar} />

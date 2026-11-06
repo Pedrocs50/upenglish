@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ExternalLink, Info, Plus, Trash2, Video } from "lucide-react";
-import { supabase, traduzirErro } from "../lib/supabase";
+import { traduzirErro } from "../lib/supabase";
 import { useConsulta } from "../lib/dados";
-import { DIAS, buscarEncontros, ehLinkDoMeet, resumoHorarios, type Encontros, type Horario } from "../lib/aoVivo";
+import { DIAS, buscarEncontros, ehLinkDoMeet, normalizarLink, resumoHorarios, salvarEncontros, type Encontros, type Horario } from "../lib/aoVivo";
 import { Aviso, Botao, TextoCarregando } from "./ui";
 import CopiarTexto from "./CopiarTexto";
 
@@ -25,7 +25,7 @@ function Formulario({ idTurma, nomeTurma, inicial, aoSalvar }: { idTurma: string
   const [salvo, setSalvo] = useState(false);
 
   const mudarHorario = (i: number, parcial: Partial<Horario>) => setHorarios(horarios.map((h, j) => (j === i ? { ...h, ...parcial } : h)));
-  const linkLimpo = link.trim();
+  const linkLimpo = normalizarLink(link);
   const linkInvalido = linkLimpo !== "" && !/^https:\/\//i.test(linkLimpo);
   const naoEhMeet = linkLimpo !== "" && !linkInvalido && !ehLinkDoMeet(linkLimpo);
   const horariosRuins = horarios.some((h) => !h.inicio || !h.fim || h.fim === h.inicio);
@@ -35,8 +35,7 @@ function Formulario({ idTurma, nomeTurma, inicial, aoSalvar }: { idTurma: string
     if (horariosRuins) return setErro("Confira os horários: cada aula precisa de início e fim diferentes.");
     setErro("");
     setSalvando(true);
-    const { error } = await supabase.from("turma_encontros").upsert({
-      turma_id: idTurma,
+    const { error } = await salvarEncontros(idTurma, {
       link: linkLimpo,
       horarios,
       aviso: aviso.trim(),
@@ -46,6 +45,7 @@ function Formulario({ idTurma, nomeTurma, inicial, aoSalvar }: { idTurma: string
     setSalvando(false);
     if (error) setErro(traduzirErro(error.message));
     else {
+      setLink(linkLimpo);
       setSalvo(true);
       setTimeout(() => setSalvo(false), 2500);
       aoSalvar();
@@ -76,6 +76,10 @@ function Formulario({ idTurma, nomeTurma, inicial, aoSalvar }: { idTurma: string
               </a>
             )}
           </div>
+          <a href="https://meet.google.com/new" target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-destaque hover:underline">
+            <Video className="size-4" /> Criar reunião no Google Meet
+          </a>
+          <p className="text-xs text-suave">Abre o Meet na sua conta Google, em outra aba. Copie o link da reunião e cole aqui.</p>
           {linkInvalido && <p className="mt-1.5 text-xs text-erro">O link precisa começar com https://</p>}
           {naoEhMeet && <p className="mt-1.5 text-xs text-suave">Não parece um link do Google Meet. Tudo bem se for outra plataforma (Zoom, Teams...).</p>}
           <p className="mt-1.5 text-xs text-suave">Só os alunos aprovados nesta turma veem o link.</p>
@@ -150,7 +154,7 @@ function Formulario({ idTurma, nomeTurma, inicial, aoSalvar }: { idTurma: string
         <p className="flex items-center gap-2 font-bold text-marca"><Info className="size-4" /> Como ter um link fixo do Meet</p>
         <p className="text-texto">Um link fixo vale para todas as aulas: os alunos sempre entram pelo mesmo lugar.</p>
         <ol className="list-decimal space-y-1.5 pl-5 text-texto">
-          <li>No <strong>Google Agenda</strong>, crie um evento no dia e horário da aula.</li>
+          <li>No <a href="https://calendar.google.com/calendar/r/eventedit" target="_blank" rel="noreferrer" className="font-semibold underline">Google Agenda</a>, crie um evento no dia e horário da aula.</li>
           <li>Em <strong>Não se repete</strong>, escolha a repetição (ex.: toda terça e quinta).</li>
           <li>Clique em <strong>Adicionar videoconferência do Google Meet</strong> e salve.</li>
           <li>Abra o evento, copie o link <em>meet.google.com/...</em> e cole aqui.</li>

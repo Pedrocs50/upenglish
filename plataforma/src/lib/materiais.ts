@@ -33,11 +33,12 @@ export async function linkDoArquivo(caminho: string): Promise<string> {
  * Exemplo: drive.google.com/file/d/ABC/view -> drive.google.com/file/d/ABC/preview
  */
 export function embedDoGoogle(url: string): string | null {
-  const arquivo = /drive\.google\.com\/file\/d\/([\w-]+)/.exec(url);
+  // "/u/0/" aparece em quem tem mais de uma conta Google. Links "/d/e/..." (publicados na web) não têm a versão preview.
+  const arquivo = /drive\.google\.com\/file\/(?:u\/\d+\/)?d\/([\w-]+)/.exec(url);
   if (arquivo) return `https://drive.google.com/file/d/${arquivo[1]}/preview`;
-  const aberto = /drive\.google\.com\/open\?id=([\w-]+)/.exec(url);
+  const aberto = /drive\.google\.com\/(?:open|uc)\?(?:[^#]*&)?id=([\w-]+)/.exec(url);
   if (aberto) return `https://drive.google.com/file/d/${aberto[1]}/preview`;
-  const documento = /docs\.google\.com\/(document|presentation|spreadsheets)\/d\/([\w-]+)/.exec(url);
+  const documento = /docs\.google\.com\/(document|presentation|spreadsheets)\/(?:u\/\d+\/)?d\/(?!e\/)([\w-]+)/.exec(url);
   if (documento) return `https://docs.google.com/${documento[1]}/d/${documento[2]}/preview`;
   return null;
 }

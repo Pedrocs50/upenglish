@@ -1,15 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, FileText, Maximize2, Minimize2 } from "lucide-react";
-import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
+import { abrirMaterial } from "../lib/biblioteca";
 import { fonteDoMaterial, linkDoArquivo, type FonteMaterial } from "../lib/materiais";
 import { Aviso } from "./ui";
 
-/** Carrega o PDF.js só quando alguém abre uma aula (~1 MB entre biblioteca e worker). */
-async function abrirPdf(url: string): Promise<PDFDocumentProxy> {
-  const pdfjs = await import("pdfjs-dist");
-  const { default: worker } = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+/**
+ * Carrega o PDF.js só quando alguém abre uma aula (~1 MB entre biblioteca e worker).
+ * Usa o build "legacy": o normal exige recursos muito novos do navegador e não abre em celulares um pouco mais antigos.
+ * /pdfjs/ guarda o que o PDF.js busca sob demanda (copiado antes do build, por scripts/copiar-pdfjs.mjs): sem isso, imagens JPEG2000
+ * somem dos slides e fontes não embutidas saem trocadas.
+ */
+async function abrirPdf(url: string): Promise<PDFDocumentLoadingTask> {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const { default: worker } = await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url");
   pdfjs.GlobalWorkerOptions.workerSrc = worker;
-  return pdfjs.getDocument({ url }).promise;
+  return pdfjs.getDocument({
+    url,
+    wasmUrl: "/pdfjs/wasm/",
+    standardFontDataUrl: "/pdfjs/standard_fonts/",
+    cMapUrl: "/pdfjs/cmaps/",
+    iccUrl: "/pdfjs/iccs/",
+  });
 }
 
 /** Uma página do PDF: só é desenhada quando chega perto da tela (os slides das aulas passam de 30 páginas). */
@@ -18,6 +30,7 @@ function Pagina({ documento, numero, largura }: { documento: PDFDocumentProxy; n
   const caixa = useRef<HTMLDivElement>(null);
   const [visivel, setVisivel] = useState(numero <= 2);
   const [proporcao, setProporcao] = useState(9 / 16);
+  const [falhou, setFalhou] = useState(false);
 
   useEffect(() => {
     if (visivel || !caixa.current) return;
@@ -32,8 +45,9 @@ function Pagina({ documento, numero, largura }: { documento: PDFDocumentProxy; n
     if (!visivel || !canvas.current || largura === 0) return;
     let cancelado = false;
     let tarefa: { cancel: () => void } | null = null;
+    setFalhou(false);
     documento.getPage(numero).then((pagina) => {
-      if (cancelado || !canvas.current) return;
+      if (cancelado || !canvas.current) return undefined;
       const base = pagina.getViewport({ scale: 1 });
       setProporcao(base.height / base.width);
       const densidade = Math.min(window.devicePixelRatio || 1, 2);
@@ -42,7 +56,10 @@ function Pagina({ documento, numero, largura }: { documento: PDFDocumentProxy; n
       canvas.current.height = viewport.height;
       const render = pagina.render({ canvas: canvas.current, viewport });
       tarefa = render;
-      render.promise.catch(() => undefined);
+      return render.promise;
+    }).catch((e: { name?: string }) => {
+      // Cancelar é normal (a janela mudou de tamanho ou a pessoa saiu da aula); o resto vira aviso em vez de página em branco.
+      if (!cancelado && e?.name !== "RenderingCancelledException") setFalhou(true);
     });
     return () => {
       cancelado = true;
@@ -51,8 +68,9 @@ function Pagina({ documento, numero, largura }: { documento: PDFDocumentProxy; n
   }, [visivel, documento, numero, largura]);
 
   return (
-    <div ref={caixa} className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-borda" style={{ aspectRatio: `1 / ${proporcao}` }}>
+    <div ref={caixa} className="relative overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-borda" style={{ aspectRatio: `1 / ${proporcao}` }}>
       <canvas ref={canvas} className="block h-full w-full" aria-label={`Página ${numero}`} role="img" />
+      {falhou && <p className="absolute inset-0 grid place-items-center p-4 text-center text-sm text-suave">Não foi possível mostrar a página {numero}. Use "Abrir em outra aba".</p>}
     </div>
   );
 }
@@ -65,11 +83,25 @@ function LeitorDeArquivo({ url, nome }: { url: string; nome: string }) {
 
   useEffect(() => {
     let ativo = true;
+    let tarefa: PDFDocumentLoadingTask | null = null;
+    setErro("");
     abrirPdf(url)
+      .then((t) => {
+        tarefa = t;
+        if (!ativo) t.destroy();
+        return t.promise;
+      })
       .then((doc) => ativo && setDocumento(doc))
-      .catch(() => ativo && setErro("Não foi possível mostrar o PDF aqui."));
+      .catch((e) => {
+        if (!ativo) return;
+        console.error("Leitor de PDF:", e);
+        setErro("Não foi possível mostrar o PDF aqui.");
+      });
     return () => {
       ativo = false;
+      setDocumento(null);
+      // Libera o worker e a memória do PDF ao sair da aula.
+      tarefa?.destroy();
     };
   }, [url]);
 
@@ -109,6 +141,9 @@ export default function LeitorPdf({ aula }: { aula: { material_arquivo?: string;
   const [erro, setErro] = useState("");
   const [expandido, setExpandido] = useState(false);
 
+  /** PDF enviado: pede um link novo na hora, porque o da página vence em 1 hora e a aula pode ter ficado aberta. */
+  const abrirArquivoFora = (caminho: string) => abrirMaterial(caminho).catch((e) => setErro((e as Error).message));
+
   useEffect(() => {
     setErro("");
     setUrl(null);
@@ -132,7 +167,11 @@ export default function LeitorPdf({ aula }: { aula: { material_arquivo?: string;
             {expandido ? <><Minimize2 className="size-3.5" /> Reduzir</> : <><Maximize2 className="size-3.5" /> Ampliar</>}
           </button>
         )}
-        {abrirFora && (
+        {fonte.tipo === "arquivo" ? (
+          <button type="button" onClick={() => abrirArquivoFora(fonte.caminho)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-destaque hover:bg-destaque-suave">
+            <ExternalLink className="size-3.5" /> Abrir em outra aba
+          </button>
+        ) : abrirFora && (
           <a href={abrirFora} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-destaque hover:bg-destaque-suave">
             <ExternalLink className="size-3.5" /> Abrir em outra aba
           </a>

@@ -297,7 +297,7 @@ export default function Turma() {
         <section>
           <p className="mb-4 text-sm text-suave">
             Os exercícios do curso <Link to={`/cursos/${turma.curso_id}`} className="font-semibold text-destaque underline">{turma.cursos.titulo}</Link>, na ordem
-            dele. Libere conforme a turma avança: o aluno só vê os liberados (e publicados).
+            dele. Eles entram liberados e o aluno já vê os publicados. Para segurar algum nesta turma, é só recolher.
           </p>
           {exercicios.length === 0 ? (
             <Aviso tipo="info">
@@ -307,7 +307,7 @@ export default function Turma() {
             <>
               {quantosLiberados < exercicios.length && (
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-borda bg-superficie p-4">
-                  <p className="text-sm text-suave">Libere um a um ou todos de uma vez. Os alunos recebem um aviso só.</p>
+                  <p className="text-sm text-suave">Há exercícios recolhidos nesta turma. Libere um a um ou todos de uma vez: os alunos recebem um aviso só.</p>
                   <Botao
                     variante="secundario"
                     onClick={() => {

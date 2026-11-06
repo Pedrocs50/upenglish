@@ -69,7 +69,7 @@ plataforma/             o site
 ├─ src/lib/             regras e acesso a dados
 └─ testes/banco.mjs     testes do banco (todas as migrações + regras de acesso)
 supabase/
-├─ migrations/          o banco, em ordem (0001 a 0017)
+├─ migrations/          o banco, em ordem (0001 a 0019)
 ├─ functions/           assistente (IA das listas) e audio (voz dos listenings)
 └─ exemplos/            listas e cursos de exemplo, com gerador
 docs/                   documentação de cada parte
@@ -118,6 +118,8 @@ Papéis: todo cadastro novo entra como **aluno**; um **admin** promove professor
 | `0015` | Biblioteca de aulas em PDF |
 | `0016` | Registro de exclusões |
 | `0017` | Nome vindo do Google no cadastro |
+| `0018` | Exercícios do curso |
+| `0019` | Exercício adicionado ao curso já fica liberado para as turmas |
 
 ## Assistente de IA e áudio
 

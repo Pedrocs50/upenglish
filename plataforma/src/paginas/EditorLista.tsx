@@ -311,7 +311,7 @@ export default function EditorLista() {
         const { count } = await supabase.from("curso_listas").select("lista_id", { count: "exact", head: true }).eq("curso_id", cursoDestino.id);
         const { error: erroCurso } = await supabase.from("curso_listas").insert({ curso_id: cursoDestino.id, lista_id: lista.id, ordem: count ?? 0 });
         if (erroCurso) setErro(`A lista foi salva, mas não entrou no curso: ${traduzirErro(erroCurso.message)}`);
-        else setAviso(`Lista criada e colocada nos exercícios do curso ${cursoDestino.titulo}. Os alunos a veem quando ela estiver publicada e a turma liberar.`);
+        else setAviso(`Lista criada e colocada nos exercícios do curso ${cursoDestino.titulo}. Os alunos das turmas do curso a veem assim que ela for publicada.`);
         setUsosAtualizados((n) => n + 1);
       }
     }

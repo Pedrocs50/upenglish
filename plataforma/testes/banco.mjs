@@ -412,6 +412,20 @@ conferir(await falhaComo(PROFESSOR, "update public.turma_encontros set link = 'j
 await como(PROFESSOR, "update public.turma_encontros set aviso = 'Hoje às 20h', aviso_ate = current_date where turma_id = $1", [idTurmaBase]);
 conferir((await numero(ALUNO, "select count(*) from public.turma_encontros where aviso = 'Hoje às 20h'")) === 1, "aluno vê o aviso do dia");
 
+// Mesmo caminho do site (salvarEncontros): turma sem link cria a linha; turma com link só atualiza.
+{
+  const { rows: [{ id: cursoMeet }] } = await como(PROFESSOR, "insert into public.cursos (titulo, idioma, nivel) values ('Curso Meet', 'ingles', 1) returning id");
+  const { rows: [{ id: turmaMeet }] } = await como(PROFESSOR, "insert into public.turmas (nome, curso_id) values ('Turma Meet', $1) returning id", [cursoMeet]);
+  const atualizar = (link) => como(PROFESSOR, "update public.turma_encontros set link = $2, atualizado_em = now() where turma_id = $1 returning turma_id", [turmaMeet, link]);
+  conferir((await atualizar("https://meet.google.com/aaa-bbbb-ccc")).rows.length === 0, "turma sem link: a atualização não acha linha (e o site cria)");
+  await como(PROFESSOR, "insert into public.turma_encontros (turma_id, link) values ($1, 'https://meet.google.com/aaa-bbbb-ccc')", [turmaMeet]);
+  conferir((await atualizar("https://meet.google.com/ddd-eeee-fff")).rows.length === 1, "professora troca o link que já estava salvo");
+  conferir(
+    await falhaComo(PROFESSOR, "insert into public.turma_encontros (turma_id, link) values ($1, 'https://x.example') on conflict (turma_id) do update set turma_id = excluded.turma_id, link = excluded.link", [turmaMeet]),
+    "o upsert do PostgREST continua barrado (por isso o site não pode usá-lo nesta tabela)",
+  );
+}
+
 // ----------------------------------------------------------------------------- exercícios do curso
 console.log("Exercícios do curso");
 const novaListaDoCurso = async (titulo, status = "publicada") => {
@@ -427,24 +441,48 @@ const { rows: [{ id: turmaElem }] } = await como(PROFESSOR, "insert into public.
 await db.query("insert into public.matriculas (turma_id, aluno_id, situacao) values ($1, $2, 'aprovada')", [turmaElem, OUTRO_ALUNO]);
 const veQuantas = (uid) => numero(uid, "select count(*) from public.listas where id = any($1::uuid[])", [[plurais, thereIs, foraDoCurso]]);
 
-await como(PROFESSOR, "insert into public.curso_listas (curso_id, lista_id, ordem) values ($1, $2, 0), ($1, $3, 1)", [cursoElem, plurais, thereIs]);
-conferir((await numero(PROFESSOR, "select count(*) from public.curso_listas where curso_id = $1", [cursoElem])) === 2, "professora coloca vários exercícios no curso de uma vez");
-conferir((await veQuantas(OUTRO_ALUNO)) === 0, "exercício do curso não liberado: o aluno da turma ainda não vê");
-conferir(await falhaComo(OUTRO_ALUNO, "insert into public.curso_listas (curso_id, lista_id) values ($1, $2)", [cursoElem, foraDoCurso]), "aluno não coloca exercício no curso");
-conferir(await falhaComo(OUTRO_ALUNO, "insert into public.curso_listas_liberadas (turma_id, lista_id) values ($1, $2)", [turmaElem, plurais]), "aluno não libera exercício do curso");
-conferir(await falhaComo(PROFESSOR, "insert into public.curso_listas_liberadas (turma_id, lista_id) values ($1, $2)", [turmaElem, foraDoCurso]), "não dá para liberar na turma um exercício que não está no curso dela");
+// Turma de outra responsável no mesmo curso: também recebe os exercícios, mesmo sem a professora gerenciá-la.
+const { rows: [{ id: turmaDaOutra }] } = await como(ADMIN, "insert into public.turmas (nome, curso_id) values ('Elementary · terça', $1) returning id", [cursoElem]);
+await db.query("insert into public.matriculas (turma_id, aluno_id, situacao) values ($1, $2, 'aprovada')", [turmaDaOutra, PENDENTE]);
 
 const antesCurso = await contarNotif(OUTRO_ALUNO, "exercicio_liberado");
-await como(PROFESSOR, "insert into public.curso_listas_liberadas (turma_id, lista_id) values ($1, $2), ($1, $3)", [turmaElem, plurais, thereIs]);
-conferir((await veQuantas(OUTRO_ALUNO)) === 2, "liberados na turma: o aluno vê os exercícios do curso");
+await como(PROFESSOR, "insert into public.curso_listas (curso_id, lista_id, ordem) values ($1, $2, 0), ($1, $3, 1)", [cursoElem, plurais, thereIs]);
+conferir((await numero(PROFESSOR, "select count(*) from public.curso_listas where curso_id = $1", [cursoElem])) === 2, "professora coloca vários exercícios no curso de uma vez");
+conferir((await veQuantas(OUTRO_ALUNO)) === 2, "entrou no curso: o aluno da turma já vê, sem aprovação manual");
+conferir((await veQuantas(PENDENTE)) === 2, "as outras turmas do curso também recebem");
 conferir((await numero(OUTRO_ALUNO, "select count(*) from public.curso_listas where curso_id = $1", [cursoElem])) === 2, "o aluno vê a ordem dos exercícios do curso");
-conferir((await contarNotif(OUTRO_ALUNO, "exercicio_liberado")) - antesCurso === 1, "liberar vários de uma vez gera um aviso só");
-conferir((await veQuantas(ALUNO)) === 0, "aluno de outra turma não vê os exercícios liberados");
+conferir((await contarNotif(OUTRO_ALUNO, "exercicio_liberado")) - antesCurso === 1, "adicionar vários de uma vez gera um aviso só");
+conferir((await veQuantas(ALUNO)) === 0, "aluno de outra turma não vê os exercícios do curso");
+conferir(await falhaComo(OUTRO_ALUNO, "insert into public.curso_listas (curso_id, lista_id) values ($1, $2)", [cursoElem, foraDoCurso]), "aluno não coloca exercício no curso");
+conferir(await falhaComo(OUTRO_ALUNO, "delete from public.curso_listas_liberadas where turma_id = $1", [turmaElem]) || (await veQuantas(OUTRO_ALUNO)) === 2, "aluno não recolhe exercício do curso");
+conferir(await falhaComo(PROFESSOR, "insert into public.curso_listas_liberadas (turma_id, lista_id) values ($1, $2)", [turmaElem, foraDoCurso]), "não dá para liberar na turma um exercício que não está no curso dela");
 
 await como(PROFESSOR, "delete from public.curso_listas_liberadas where turma_id = $1 and lista_id = $2", [turmaElem, thereIs]);
 conferir((await veQuantas(OUTRO_ALUNO)) === 1, "recolher na turma esconde o exercício de novo");
+conferir((await veQuantas(PENDENTE)) === 2, "recolher numa turma não mexe nas outras");
+await como(PROFESSOR, "insert into public.curso_listas_liberadas (turma_id, lista_id) values ($1, $2)", [turmaElem, thereIs]);
+conferir((await veQuantas(OUTRO_ALUNO)) === 2, "a professora pode liberar de novo o que recolheu");
+
+// Rascunho entra no curso, mas só aparece (e só avisa) quando for publicado.
+const rascunho = await novaListaDoCurso("Ainda em rascunho", "rascunho");
+const veRascunho = (uid) => numero(uid, "select count(*) from public.listas where id = $1", [rascunho]);
+const antesRascunho = await contarNotif(OUTRO_ALUNO, "exercicio_liberado");
+await como(PROFESSOR, "insert into public.curso_listas (curso_id, lista_id, ordem) values ($1, $2, 2)", [cursoElem, rascunho]);
+conferir((await veRascunho(OUTRO_ALUNO)) === 0, "rascunho no curso: o aluno ainda não vê");
+conferir((await contarNotif(OUTRO_ALUNO, "exercicio_liberado")) === antesRascunho, "rascunho no curso: sem aviso ao aluno");
+await como(PROFESSOR, "update public.listas set status = 'publicada' where id = $1", [rascunho]);
+conferir((await veRascunho(OUTRO_ALUNO)) === 1, "publicou: o aluno já vê, sem outra etapa");
+conferir((await contarNotif(OUTRO_ALUNO, "exercicio_liberado")) - antesRascunho === 1, "publicou: o aluno recebe um aviso");
+await como(PROFESSOR, "update public.listas set status = 'rascunho' where id = $1", [rascunho]);
+await como(PROFESSOR, "update public.listas set status = 'publicada' where id = $1", [rascunho]);
+
+// Turma criada depois já nasce com os exercícios do curso.
+const { rows: [{ id: turmaNova }] } = await como(PROFESSOR, "insert into public.turmas (nome, curso_id) values ('Elementary · nova', $1) returning id", [cursoElem]);
+conferir((await numero(PROFESSOR, "select count(*) from public.curso_listas_liberadas where turma_id = $1", [turmaNova])) === 3, "turma nova nasce com os exercícios que o curso já tem");
+
 await como(PROFESSOR, "delete from public.curso_listas where curso_id = $1 and lista_id = $2", [cursoElem, plurais]);
-conferir((await veQuantas(OUTRO_ALUNO)) === 0, "tirar o exercício do curso também esconde (mesmo já liberado)");
+conferir((await veQuantas(OUTRO_ALUNO)) === 1, "tirar o exercício do curso também esconde (mesmo já liberado)");
+
 
 console.log(falhas === 0 ? "\nTudo certo." : `\n${falhas} verificação(ões) falharam.`);
 process.exit(falhas === 0 ? 0 : 1);

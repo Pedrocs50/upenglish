@@ -16,6 +16,28 @@ export async function buscarEncontros(idTurma: string) {
   return { data: (data as Encontros | null) ?? null, error };
 }
 
+/**
+ * Grava o link e os horários da turma. Atualiza e, se a turma ainda não tem linha, cria.
+ * Não dá para usar upsert aqui: o PostgREST também regrava a chave (turma_id) no conflito, e a tabela só permite
+ * alterar as colunas de conteúdo (migração 0013). O banco recusava todo salvamento com "permission denied".
+ */
+export async function salvarEncontros(idTurma: string, campos: Pick<Encontros, "link" | "horarios" | "aviso" | "aviso_ate" | "atualizado_em">) {
+  const { data, error } = await supabase.from("turma_encontros").update(campos).eq("turma_id", idTurma).select("turma_id");
+  if (error || data.length > 0) return { error };
+  return supabase.from("turma_encontros").insert({ turma_id: idTurma, ...campos });
+}
+
+/**
+ * Aceita o link do jeito que a pessoa colar: sem "https://" ou no meio do convite inteiro do Meet.
+ * O que não dá para corrigir volta como veio, e a tela avisa.
+ */
+export function normalizarLink(texto: string) {
+  const limpo = texto.trim();
+  const meet = /(?:https?:\/\/)?meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}(?:\?\S*)?/i.exec(limpo)?.[0];
+  if (meet) return `https://${meet.replace(/^https?:\/\//i, "")}`;
+  return !limpo || /\s/.test(limpo) || /^[a-z][a-z0-9+.-]*:/i.test(limpo) ? limpo : `https://${limpo}`;
+}
+
 const paraMinutos = (hora: string) => {
   const [h, m] = hora.split(":").map(Number);
   return h * 60 + (m || 0);
