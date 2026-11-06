@@ -1,0 +1,64 @@
+# Copie este arquivo para .github/workflows/backup.yml no repositório PRIVADO das cópias (veja docs/backup.md).
+# Ele não roda aqui: as cópias e os registros têm de ficar longe do repositório público.
+name: Cópia de segurança
+
+on:
+  schedule:
+    - cron: "0 6 * * 0" # Domingo, 3h da manhã em Brasília.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  COPIAS_MANTIDAS: 8
+
+jobs:
+  copiar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Pedrocs50/eegen
+          path: eegen
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar o que o script usa
+        run: npm install --prefix eegen/backup --no-audit --no-fund
+
+      - name: Fazer a cópia
+        run: bash eegen/backup/fazer-backup.sh saida
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SENHA_BACKUP: ${{ secrets.SENHA_BACKUP }}
+
+      - name: Guardar nas releases deste repositório
+        run: |
+          nome="copia-$(date -u +%F-%H%M)"
+          gh release create "$nome" saida/*.gpg --repo "$GITHUB_REPOSITORY" --title "$nome" --notes-file saida/resumo.txt
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # Cópia incompleta fica guardada, mas o GitHub avisa por e-mail e nenhuma cópia antiga é apagada.
+      - name: Avisar se faltou algum arquivo
+        run: |
+          if [ -f saida/INCOMPLETA ]; then
+            cat saida/resumo.txt
+            exit 1
+          fi
+
+      - name: Apagar as cópias antigas
+        run: bash eegen/backup/limpar-antigas.sh "$COPIAS_MANTIDAS"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}

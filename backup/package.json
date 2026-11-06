@@ -1,0 +1,9 @@
+{
+  "name": "backup-up-english",
+  "private": true,
+  "type": "module",
+  "description": "Cópia de segurança da plataforma: veja docs/backup.md",
+  "dependencies": {
+    "@supabase/supabase-js": "2.118.0"
+  }
+}

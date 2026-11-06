@@ -73,6 +73,7 @@ supabase/
 ├─ functions/           assistente (IA das listas) e audio (voz dos listenings)
 └─ exemplos/            listas e cursos de exemplo, com gerador
 docs/                   documentação de cada parte
+backup/                 cópia de segurança semanal (roda em um repositório privado)
 .github/workflows/      plataforma.yml (build e testes) e gerar.yml (gerador de áudios)
 gerador.py, roteiros/…  o gerador de listening original (veja o fim)
 .claude/skills/         skills de UX/UI usadas no desenvolvimento (só no computador do Pedro)
@@ -168,6 +169,7 @@ Para apagar as listas de exemplo: `delete from public.listas where origem = 'exe
 | [docs/exercicios.md](docs/exercicios.md) | Formatos de exercício, correção, resultados e o desenho do assistente |
 | [docs/assistente-ia.md](docs/assistente-ia.md) | Assistente UP: como funciona e como publicar |
 | [docs/audio.md](docs/audio.md) | Áudio dos listenings (Gemini TTS) |
+| [docs/backup.md](docs/backup.md) | Cópia de segurança semanal: como ligar e como restaurar |
 | [docs/monitor-de-erros.md](docs/monitor-de-erros.md) | Aba "Erros e testes": o que é registrado, privacidade e verificações |
 | [docs/interface.md](docs/interface.md) | Convenções de acessibilidade e usabilidade da interface |
 
@@ -177,7 +179,7 @@ Para apagar as listas de exemplo: `delete from public.listas where origem = 'exe
 - **Interface:** menu do celular, diálogo de confirmação próprio e filtros na URL (lista em [docs/interface.md](docs/interface.md)).
 - **Speaking:** exercícios com gravação da voz do aluno.
 - **Uma turma com mais de um curso**, hoje cada turma segue um só.
-- **Domínio próprio e backup semanal** do banco.
+- **Domínio próprio.**
 
 ---
 
