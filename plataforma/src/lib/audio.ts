@@ -1,3 +1,4 @@
+import { fetchVigiado } from "./monitor";
 import { supabase } from "./supabase";
 
 export type ResultadoAudio = { url: string; caminho: string; hash: string; segundos: number; reaproveitado: boolean };
@@ -63,7 +64,7 @@ export async function gerarAudio(roteiro: string, vozes: Record<string, string>)
   const { data: sessao } = await supabase.auth.getSession();
   const token = sessao.session?.access_token;
   if (!token) throw new Error("Sua sessão expirou. Entre de novo.");
-  const resposta = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audio`, {
+  const resposta = await fetchVigiado(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audio`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({ roteiro, vozes }),

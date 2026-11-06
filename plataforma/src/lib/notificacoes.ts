@@ -28,18 +28,19 @@ export const EVENTO_CONTADORES = "up:contadores";
 export const recontar = () => window.dispatchEvent(new Event(EVENTO_CONTADORES));
 
 /**
- * Números do menu: notificações não lidas e (para a equipe) pedidos de entrada pendentes.
+ * Números do menu: notificações não lidas, (para a equipe) pedidos de entrada pendentes e (para o admin) erros abertos.
  * Atualiza ao abrir, a cada minuto, quando a aba volta a ficar visível e quando alguém chama recontar().
  */
 export function useContadores(papel: Papel | undefined, caminho: string) {
-  const [contadores, setContadores] = useState({ naoLidas: 0, pedidos: 0 });
+  const [contadores, setContadores] = useState({ naoLidas: 0, pedidos: 0, erros: 0 });
   const atualizar = useCallback(async () => {
     if (!papel) return;
-    const [naoLidas, pedidos] = await Promise.all([
+    const [naoLidas, pedidos, erros] = await Promise.all([
       supabase.from("notificacoes").select("id", { count: "exact", head: true }).is("lida_em", null),
       papel === "aluno" ? null : supabase.from("matriculas").select("aluno_id", { count: "exact", head: true }).eq("situacao", "pendente"),
+      papel === "admin" ? supabase.from("erros_do_site").select("id", { count: "exact", head: true }).is("resolvido_em", null) : null,
     ]);
-    setContadores({ naoLidas: naoLidas.count ?? 0, pedidos: pedidos?.count ?? 0 });
+    setContadores({ naoLidas: naoLidas.count ?? 0, pedidos: pedidos?.count ?? 0, erros: erros?.count ?? 0 });
   }, [papel]);
 
   useEffect(() => {

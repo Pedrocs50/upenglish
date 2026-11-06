@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { definirEnvioDeErros, fetchVigiado } from "./monitor";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const chave = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -7,7 +8,14 @@ if (!url || !chave) {
   throw new Error("Defina VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY em plataforma/.env.local");
 }
 
-export const supabase = createClient(url, chave);
+export const supabase = createClient(url, chave, { global: { fetch: fetchVigiado } });
+
+definirEnvioDeErros(async (e) => {
+  const { error } = await supabase.rpc("registrar_erro", {
+    p_origem: e.origem, p_mensagem: e.mensagem, p_detalhe: e.detalhe, p_rota: e.rota, p_navegador: e.navegador, p_versao: e.versao,
+  });
+  return !error;
+});
 
 export type Papel = "admin" | "professor" | "aluno";
 

@@ -3,26 +3,9 @@ import { ExternalLink, FileText, Maximize2, Minimize2 } from "lucide-react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from "pdfjs-dist";
 import { abrirMaterial } from "../lib/biblioteca";
 import { fonteDoMaterial, linkDoArquivo, type FonteMaterial } from "../lib/materiais";
+import { relatarErro } from "../lib/monitor";
+import { abrirPdf } from "../lib/pdf";
 import { Aviso } from "./ui";
-
-/**
- * Carrega o PDF.js só quando alguém abre uma aula (~1 MB entre biblioteca e worker).
- * Usa o build "legacy": o normal exige recursos muito novos do navegador e não abre em celulares um pouco mais antigos.
- * /pdfjs/ guarda o que o PDF.js busca sob demanda (copiado antes do build, por scripts/copiar-pdfjs.mjs): sem isso, imagens JPEG2000
- * somem dos slides e fontes não embutidas saem trocadas.
- */
-async function abrirPdf(url: string): Promise<PDFDocumentLoadingTask> {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const { default: worker } = await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url");
-  pdfjs.GlobalWorkerOptions.workerSrc = worker;
-  return pdfjs.getDocument({
-    url,
-    wasmUrl: "/pdfjs/wasm/",
-    standardFontDataUrl: "/pdfjs/standard_fonts/",
-    cMapUrl: "/pdfjs/cmaps/",
-    iccUrl: "/pdfjs/iccs/",
-  });
-}
 
 /** Uma página do PDF: só é desenhada quando chega perto da tela (os slides das aulas passam de 30 páginas). */
 function Pagina({ documento, numero, largura }: { documento: PDFDocumentProxy; numero: number; largura: number }) {
@@ -59,7 +42,10 @@ function Pagina({ documento, numero, largura }: { documento: PDFDocumentProxy; n
       return render.promise;
     }).catch((e: { name?: string }) => {
       // Cancelar é normal (a janela mudou de tamanho ou a pessoa saiu da aula); o resto vira aviso em vez de página em branco.
-      if (!cancelado && e?.name !== "RenderingCancelledException") setFalhou(true);
+      if (!cancelado && e?.name !== "RenderingCancelledException") {
+        setFalhou(true);
+        void relatarErro("leitor_pdf", e, `Ao desenhar a página ${numero}.`);
+      }
     });
     return () => {
       cancelado = true;
@@ -95,6 +81,7 @@ function LeitorDeArquivo({ url, nome }: { url: string; nome: string }) {
       .catch((e) => {
         if (!ativo) return;
         console.error("Leitor de PDF:", e);
+        void relatarErro("leitor_pdf", e, `Ao abrir: ${nome}`);
         setErro("Não foi possível mostrar o PDF aqui.");
       });
     return () => {
@@ -148,7 +135,10 @@ export default function LeitorPdf({ aula }: { aula: { material_arquivo?: string;
     setErro("");
     setUrl(null);
     if (!fonte) return;
-    if (fonte.tipo === "arquivo") linkDoArquivo(fonte.caminho).then(setUrl).catch((e) => setErro((e as Error).message));
+    if (fonte.tipo === "arquivo") linkDoArquivo(fonte.caminho).then(setUrl).catch((e) => {
+      setErro((e as Error).message);
+      void relatarErro("leitor_pdf", e, `Arquivo: ${fonte.caminho}`);
+    });
     else setUrl(fonte.tipo === "drive" ? fonte.embed : fonte.url);
     // A fonte só muda quando os campos da aula mudam.
     // eslint-disable-next-line react-hooks/exhaustive-deps

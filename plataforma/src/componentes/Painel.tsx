@@ -1,16 +1,17 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
-import { BarChart3, Bell, BookMarked, FileStack, ClipboardList, GraduationCap, LogOut, Menu, Moon, PenLine, Settings, Sun, UserRound, Users, UsersRound, X, type LucideIcon } from "lucide-react";
+import { BarChart3, Bell, BookMarked, Bug, FileStack, ClipboardList, GraduationCap, LogOut, Menu, Moon, PenLine, Settings, Sun, UserRound, Users, UsersRound, X, type LucideIcon } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { useTema } from "../lib/tema";
 import { useContadores } from "../lib/notificacoes";
 import { NOMES_PAPEIS, type Papel } from "../lib/supabase";
 import { Marca } from "./ui";
+import LimiteDeErro from "./LimiteDeErro";
 import Avatar from "./Avatar";
 
 /** emConstrucao: parte em espera; só o admin vê (com selo), para acompanhar tudo o que existe. */
 type ItemMenu = { para: string; rotulo: string; icone: LucideIcon; emConstrucao?: boolean; contador?: keyof Contadores };
-type Contadores = { naoLidas: number; pedidos: number };
+type Contadores = { naoLidas: number; pedidos: number; erros: number };
 type SecaoMenu = { titulo: string; itens: ItemMenu[] };
 
 const SOBRE: SecaoMenu = { titulo: "UP English", itens: [{ para: "/sobre", rotulo: "Sobre a professora", icone: UserRound }] };
@@ -47,6 +48,7 @@ const MENUS: Record<Papel, SecaoMenu[]> = {
       itens: [
         { para: "/admin", rotulo: "Usuários", icone: Users },
         { para: "/admin/configuracoes", rotulo: "Configurações", icone: Settings },
+        { para: "/admin/erros", rotulo: "Erros e testes", icone: Bug, contador: "erros" },
       ],
     },
     SOBRE,
@@ -103,7 +105,7 @@ function ConteudoMenu({ aoFechar, contadores }: { aoFechar?: () => void; contado
                     {contador && contadores[contador] > 0 && (
                       <span
                         className="min-w-6 rounded-full bg-coral px-1.5 py-0.5 text-center text-[11px] font-bold text-white"
-                        aria-label={contador === "pedidos" ? `${contadores[contador]} pedidos para entrar` : `${contadores[contador]} não lidas`}
+                        aria-label={contador === "pedidos" ? `${contadores[contador]} pedidos para entrar` : contador === "erros" ? `${contadores[contador]} erros abertos` : `${contadores[contador]} não lidas`}
                       >
                         {contadores[contador] > 99 ? "99+" : contadores[contador]}
                       </span>
@@ -168,7 +170,7 @@ export default function Painel({ children }: { children?: ReactNode }) {
           </NavLink>
           <button onClick={() => setAberto(true)} aria-label="Abrir menu" aria-expanded={aberto} className="relative grid size-10 place-items-center rounded-xl text-texto hover:bg-fundo">
             <Menu className="size-6" />
-            {contadores.pedidos > 0 && <span className="absolute top-1.5 right-1.5 size-2.5 rounded-full bg-coral ring-2 ring-lateral" />}
+            {contadores.pedidos + contadores.erros > 0 && <span className="absolute top-1.5 right-1.5 size-2.5 rounded-full bg-coral ring-2 ring-lateral" />}
           </button>
         </div>
       </header>
@@ -182,7 +184,7 @@ export default function Painel({ children }: { children?: ReactNode }) {
         </div>
       )}
 
-      <main className="max-w-6xl px-4 py-8 sm:px-8 lg:px-12 lg:py-10">{children ?? <Outlet />}</main>
+      <main className="max-w-6xl px-4 py-8 sm:px-8 lg:px-12 lg:py-10"><LimiteDeErro chave={local.pathname}>{children ?? <Outlet />}</LimiteDeErro></main>
     </div>
   );
 }

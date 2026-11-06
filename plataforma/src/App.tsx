@@ -13,6 +13,7 @@ import Sobre from "./paginas/Sobre";
 
 const Admin = lazy(() => import("./paginas/Admin"));
 const Configuracoes = lazy(() => import("./paginas/Configuracoes"));
+const Monitor = lazy(() => import("./paginas/Monitor"));
 const InicioProfessor = lazy(() => import("./paginas/Inicios").then((m) => ({ default: m.InicioProfessor })));
 const MinhasTurmas = lazy(() => import("./paginas/MinhasTurmas").then((m) => ({ default: m.MinhasTurmas })));
 const TurmaDoAluno = lazy(() => import("./paginas/MinhasTurmas").then((m) => ({ default: m.TurmaDoAluno })));
@@ -117,6 +118,7 @@ export default function App() {
           <Route element={<Protegida papeis={["admin"]} />}>
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/configuracoes" element={<Configuracoes />} />
+            <Route path="/admin/erros" element={<Monitor />} />
           </Route>
           <Route element={<Protegida papeis={["professor"]} />}>
             <Route path="/professor" element={<InicioProfessor />} />

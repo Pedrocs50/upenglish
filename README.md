@@ -69,7 +69,7 @@ plataforma/             o site
 ├─ src/lib/             regras e acesso a dados
 └─ testes/banco.mjs     testes do banco (todas as migrações + regras de acesso)
 supabase/
-├─ migrations/          o banco, em ordem (0001 a 0019)
+├─ migrations/          o banco, em ordem (0001 a 0020)
 ├─ functions/           assistente (IA das listas) e audio (voz dos listenings)
 └─ exemplos/            listas e cursos de exemplo, com gerador
 docs/                   documentação de cada parte
@@ -120,6 +120,7 @@ Papéis: todo cadastro novo entra como **aluno**; um **admin** promove professor
 | `0017` | Nome vindo do Google no cadastro |
 | `0018` | Exercícios do curso |
 | `0019` | Exercício adicionado ao curso já fica liberado para as turmas |
+| `0020` | Monitor de erros: erros do site para o admin ver, e verificações do banco ([docs](docs/monitor-de-erros.md)) |
 
 ## Assistente de IA e áudio
 
@@ -167,6 +168,7 @@ Para apagar as listas de exemplo: `delete from public.listas where origem = 'exe
 | [docs/exercicios.md](docs/exercicios.md) | Formatos de exercício, correção, resultados e o desenho do assistente |
 | [docs/assistente-ia.md](docs/assistente-ia.md) | Assistente UP: como funciona e como publicar |
 | [docs/audio.md](docs/audio.md) | Áudio dos listenings (Gemini TTS) |
+| [docs/monitor-de-erros.md](docs/monitor-de-erros.md) | Aba "Erros e testes": o que é registrado, privacidade e verificações |
 | [docs/interface.md](docs/interface.md) | Convenções de acessibilidade e usabilidade da interface |
 
 ## Próximos passos

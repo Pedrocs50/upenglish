@@ -483,6 +483,74 @@ conferir((await numero(PROFESSOR, "select count(*) from public.curso_listas_libe
 await como(PROFESSOR, "delete from public.curso_listas where curso_id = $1 and lista_id = $2", [cursoElem, plurais]);
 conferir((await veQuantas(OUTRO_ALUNO)) === 1, "tirar o exercício do curso também esconde (mesmo já liberado)");
 
+// ----------------------------------------------------------------------------- monitor de erros
+console.log("Monitor de erros");
+const relatar = (uid, ...valores) => como(uid, "select public.registrar_erro($1, $2, $3, $4, $5, $6)", valores);
+const lerErros = async () => (await db.query("select * from public.erros_do_site where origem <> 'teste' order by primeiro_em")).rows;
+
+await relatar(ALUNO, "banco", "POST turma_encontros: permission denied for table turma_encontros", "código 42501", "/turmas/11111111-1111-1111-1111-111111111111", "Firefox", "abc1234");
+await relatar(OUTRO_ALUNO, "banco", "POST turma_encontros: permission denied for table turma_encontros", "", "/turmas/22222222-2222-2222-2222-222222222222", "Chrome", "abc1234");
+await relatar(ALUNO, "banco", "POST turma_encontros: permission denied for table turma_encontros", "", "/turmas/33333333-3333-3333-3333-333333333333", "Chrome", "abc1234");
+let [agrupado, ...sobrando] = await lerErros();
+conferir(sobrando.length === 0 && agrupado.ocorrencias === 3, "o mesmo erro em turmas diferentes fica numa linha só");
+conferir(agrupado.pessoas.length === 2, "conta cada pessoa uma vez");
+conferir(agrupado.detalhe === "código 42501", "repetição sem detalhe não apaga o detalhe que já havia");
+
+// Visitante também relata: a tela de login pode quebrar.
+await db.exec("set role anon; select set_config('teste.uid', '', false);");
+await db.query("select public.registrar_erro('tela', 'Tela de login quebrou', '', '/entrar', '', '')");
+await db.exec("reset role;");
+conferir((await lerErros()).some((e) => e.rota === "/entrar" && e.pessoas.length === 0 && e.ultimo_por === null), "visitante sem login consegue relatar");
+
+await relatar(ALUNO, "inventada", "Texto de maria@escola.com com token eyJabc.def.ghi e ?key=segredo123", "AIzaSyA1234567890123456789012345678901234", "/convite/CODIGOSECRETO?x=1#y", "", "");
+const sensivel = (await lerErros()).find((e) => e.mensagem.startsWith("Texto de"));
+conferir(sensivel.origem === "pagina", "origem desconhecida não entra como veio");
+conferir(!/maria@|eyJabc|segredo123/.test(sensivel.mensagem), "tira e-mail, token e chave da mensagem");
+conferir(!sensivel.detalhe.includes("AIza"), "tira chave do Google do detalhe");
+conferir(sensivel.rota === "/convite/:codigo", "não guarda o código do convite nem os parâmetros do link");
+
+await relatar(ALUNO, "pagina", "x".repeat(9000), "y".repeat(9000), "/", "z".repeat(9000), "v".repeat(900));
+const longo = (await lerErros()).find((e) => e.mensagem.startsWith("xxx"));
+conferir(longo.mensagem.length === 500 && longo.detalhe.length === 4000 && longo.navegador.length === 200 && longo.versao.length === 40, "corta textos enormes");
+await relatar(ALUNO, "pagina", "   ", "", "", "", "");
+conferir(!(await lerErros()).some((e) => e.mensagem.trim() === ""), "mensagem vazia não vira erro");
+
+// Quem lê e quem mexe.
+const idErro = agrupado.id;
+conferir((await numero(ALUNO, "select count(*) from public.erros_do_site")) === 0, "aluno não lê os erros");
+conferir((await numero(PROFESSOR, "select count(*) from public.erros_do_site")) === 0, "professor não lê os erros");
+conferir((await numero(ADMIN, "select count(*) from public.erros_do_site")) === (await lerErros()).length, "admin lê os erros");
+conferir(await falhaComo(ADMIN, "insert into public.erros_do_site (assinatura, origem, mensagem) values ('a', 'tela', 'b')"), "nem o admin grava direto: só pela função");
+conferir(await falhaComo(ADMIN, `update public.erros_do_site set mensagem = 'outra' where id = '${idErro}'`), "admin não reescreve a mensagem do erro");
+conferir(await barrado(ALUNO, `update public.erros_do_site set resolvido_em = now() where id = '${idErro}'`, async () => (await db.query(`select resolvido_em from public.erros_do_site where id = '${idErro}'`)).rows[0].resolvido_em === null), "aluno não marca como resolvido");
+conferir(await barrado(ALUNO, `delete from public.erros_do_site where id = '${idErro}'`, async () => (await db.query(`select 1 from public.erros_do_site where id = '${idErro}'`)).rows.length === 1), "aluno não apaga erros");
+
+// Resolvido que acontece de novo reabre.
+await como(ADMIN, `update public.erros_do_site set resolvido_em = now(), voltou = false where id = '${idErro}'`);
+await relatar(ALUNO, "banco", "POST turma_encontros: permission denied for table turma_encontros", "", "/turmas/44444444-4444-4444-4444-444444444444", "Chrome", "def5678");
+const reaberto = (await lerErros()).find((e) => e.id === idErro);
+conferir(reaberto.resolvido_em === null && reaberto.voltou === true && reaberto.versao === "def5678", "erro resolvido que acontece de novo reabre, com a marca de que voltou");
+
+// Limites contra enxurrada (a chave do site é pública).
+await db.exec("delete from public.erros_do_site");
+await db.exec("insert into public.erros_do_site (assinatura, origem, mensagem) select 'a' || g, 'tela', 'm' from generate_series(1, 200) g");
+await relatar(ALUNO, "pagina", "novo durante a enxurrada", "", "/", "", "");
+conferir(!(await lerErros()).some((e) => e.mensagem === "novo durante a enxurrada"), "limite de erros novos por hora");
+await db.exec("delete from public.erros_do_site");
+await db.exec("insert into public.erros_do_site (assinatura, origem, mensagem, primeiro_em, ultimo_em) values ('velho', 'tela', 'parado', now() - interval '91 days', now() - interval '91 days')");
+await relatar(ALUNO, "pagina", "erro novo", "", "/", "", "");
+conferir((await lerErros()).map((e) => e.mensagem).join() === "erro novo", "erro parado há mais de 90 dias é apagado");
+
+// Verificações do banco.
+conferir(await falhaComo(PROFESSOR, "select public.diagnostico_banco(array['perfis'])"), "só o admin roda as verificações");
+const { rows: [{ d: diag }] } = await como(ADMIN, "select public.diagnostico_banco(array['perfis', 'enviar_tentativa', 'notificar_exercicio_publicado', 'nao_existe_isso']) as d");
+conferir(JSON.stringify(diag.faltando) === '["nao_existe_isso"]', "acha tabela, função e gatilho, e aponta o que falta");
+conferir(diag.tabelas_sem_rls.length === 0, `todas as tabelas têm regras de acesso (sem: ${diag.tabelas_sem_rls})`);
+conferir(diag.buckets_faltando.length === 0, "os buckets existem");
+await db.exec("insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000f0', 'sem@perfil')");
+await db.exec("delete from public.perfis where id = '00000000-0000-0000-0000-0000000000f0'");
+const { rows: [{ d: diag2 }] } = await como(ADMIN, "select public.diagnostico_banco('{}') as d");
+conferir(Number(diag2.contas_sem_perfil) === 1, "aponta conta sem perfil");
 
 console.log(falhas === 0 ? "\nTudo certo." : `\n${falhas} verificação(ões) falharam.`);
 process.exit(falhas === 0 ? 0 : 1);
